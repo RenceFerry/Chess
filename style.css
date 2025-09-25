@@ -1,0 +1,67 @@
+body {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #543900;
+  margin: 0;
+  padding: 0;
+}
+
+body .container {
+  padding: 1rem;
+  flex: 1;
+  aspect-ratio: 1 / 1;
+}
+
+body .container .chess-board {
+  height: 100%;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border: #251811 solid 2px;
+  display: flex;
+  flex-flow: row;
+}
+
+body .container .chess-board .allowed {
+  filter: brightness(60%);
+}
+
+body .container .chess-board .letter {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-flow: column-reverse;
+}
+
+body .container .chess-board .letter .number {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-flow: column;
+  justify-content: center;
+  align-content: center;
+}
+
+body .container .chess-board .letter .number svg {
+  height: 75%;
+}
+
+body .container .chess-board > :nth-child(odd).letter > :nth-child(even) {
+  background: #9abfdc;
+}
+
+body .container .chess-board > :nth-child(odd).letter > :nth-child(odd) {
+  background: #52545b;
+}
+
+body .container .chess-board > :nth-child(even).letter > :nth-child(even) {
+  background: #52545b;
+}
+
+body .container .chess-board > :nth-child(even).letter > :nth-child(odd) {
+  background: #9abfdc;
+}
+
+/* Flip every even row */
