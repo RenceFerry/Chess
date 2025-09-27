@@ -576,15 +576,26 @@ class King extends Piece{
   
   legalMoves(){
     let legal = []
-    let x = this.pos[1]
-    let y = this.pos[0]
-    for(i = -1; i < 2; i++){
-      for(j = -1; j < 2; j++){
-        if(document.getElementById(`${y+i}${x+i}`)){
-          
+    let x = Number(this.pos[1])
+    let y = Number(this.pos[0])
+    for(let i = -1; i < 2; i++){
+      for(let j = -1; j < 2; j++){
+        //console.log(y+i, x+j)
+        if(document.getElementById(`${y+i}${x+j}`)){
+          if(x==0&&y==0)continue
+          if(
+            (document.getElementById(`${y+i}${x+j}`).classList.contains("black") && this.key === "white") || 
+            (document.getElementById(`${y+i}${x+j}`).classList.contains("white") && this.key == "black")
+          ){
+            legal.push(`${y+i}${x+j}`)
+          }
+          else if(!(document.getElementById(`${y+i}${x+j}`).hasChildNodes())){
+            legal.push(`${y+i}${x+j}`)
+          }
         }
       }
     }
+    this.setLegal(legal)
   }
 }
 
