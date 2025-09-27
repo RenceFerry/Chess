@@ -21,47 +21,65 @@ body .container .chess-board {
   aspect-ratio: 1 / 1;
   border: #251811 solid 2px;
   display: flex;
-  flex-flow: row;
+  flex-direction: row;
+  flex-wrap: wrap-reverse;
 }
 
-body .container .chess-board .allowed {
-  filter: brightness(60%);
+body .container .chess-board .allowed::before {
+  content: "";
+  border-radius: 50%;
+  width: 80%;
+  height: 80%;
+  background: black;
+  opacity: 20%;
+  position: absolute;
+  left: 10%;
+  bottom: 10%;
 }
 
-body .container .chess-board .letter {
-  flex: 1;
-  height: 100%;
+body .container .chess-board .allowed::after {
+  content: "";
+  border-radius: 50%;
+  width: 60%;
+  height: 60%;
+  background: black;
+  opacity: 10%;
+  position: absolute;
+  left: 20%;
+  bottom: 20%;
+}
+
+body .container .chess-board .position {
+  height: 12.5%;
+  width: 12.5%;
+  background: #d0a978;
+  position: relative;
+}
+
+body .container .chess-board .position div {
   display: flex;
-  flex-flow: column-reverse;
-}
-
-body .container .chess-board .letter .number {
-  flex: 1;
-  width: 100%;
-  display: flex;
-  flex-flow: column;
+  flex-direction: column-reverse;
   justify-content: center;
-  align-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  transition: 0.3s;
 }
 
-body .container .chess-board .letter .number svg {
-  height: 75%;
+body .container .chess-board .position div svg {
+  height: 80%;
 }
 
-body .container .chess-board > :nth-child(odd).letter > :nth-child(even) {
-  background: #9abfdc;
+body .container .chess-board .position div svg path {
+  box-shadow: 10px 0 0;
 }
 
-body .container .chess-board > :nth-child(odd).letter > :nth-child(odd) {
-  background: #52545b;
+body .container .chess-board > :nth-child(odd).even {
+  background: #986c36;
 }
 
-body .container .chess-board > :nth-child(even).letter > :nth-child(even) {
-  background: #52545b;
-}
-
-body .container .chess-board > :nth-child(even).letter > :nth-child(odd) {
-  background: #9abfdc;
+body .container .chess-board > :nth-child(even).odd {
+  background: #986c36;
 }
 
 /* Flip every even row */

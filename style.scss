@@ -17,42 +17,56 @@ body{
       aspect-ratio: 1 / 1;
       border: #251811 solid 2px;
       display: flex;
-      flex-flow: row;
-      .allowed{
-        filter: brightness(60%);
+      flex-direction: row;
+      flex-wrap: wrap-reverse;
+      .allowed::before{
+        content: "";
+        border-radius: 50%;
+        width: 80%;
+        height: 80%;
+        background: black;
+        opacity: 20%;
+        position: absolute;
+        left: 10%;
+        bottom: 10%;
       }
-      .letter{
-        flex: 1;
-        height: 100%;
-        display: flex;
-        flex-flow: column-reverse;
-        .number{
-          flex: 1;
-          width: 100%;
+      .allowed::after{
+          content: "";
+          border-radius: 50%;
+          width: 60%;
+          height: 60%;
+          background: black;
+          opacity: 10%;
+          position: absolute;
+          left: 20%;
+          bottom: 20%;
+        }
+      .position{
+        height: 12.5%;
+        width: 12.5%;
+        background: #d0a978;
+        position: relative;
+        div{
           display: flex;
-          flex-flow: column;
+          flex-direction: column-reverse;
           justify-content: center;
-          align-content: center;
+          align-items: center;
+          height: 100%;
+          width: 100%;
+          transition: 0.3s;
           svg{
-            height: 75%;
+            height: 80%;
+            path{
+              box-shadow: 10px 0 0;
+            }
           }
         }
       }
-      > :nth-child(odd).letter{
-        > :nth-child(even){
-          background: #9abfdc;
-        }
-        > :nth-child(odd){
-          background: #52545b;
-        }
+      > :nth-child(odd).even{
+        background: #986c36;
       }
-      > :nth-child(even).letter{
-        > :nth-child(even){
-          background: #52545b;
-        }
-        > :nth-child(odd){
-          background: #9abfdc;
-        }
+      > :nth-child(even).odd{
+        background: #986c36;
       }
     }
   }
