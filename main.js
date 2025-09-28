@@ -16,6 +16,8 @@ let whtKngt = []
 let whtBish = []
 let whtQuen = [];
 let whtKing
+let castleBlk = [true, true]
+let castleWht = [true, true]
 
 for(let i = 1; i < 9; i++){
   for(let j = 1; j < 9; j++){
@@ -66,6 +68,22 @@ class Piece{
   
   move(event){
     if(event.currentTarget.classList.contains("allowed")){
+      
+      //check if rook moves and alter castle
+      if(
+        this.pos === "11" ||
+        this.pos === "81" ||
+        this.pos === "18" ||
+        this.pos === "88" 
+      ){
+        if(this.key == "white"){
+          castleWht[Number((this.div.id)[2])-1] = false
+        }else{
+          castleBlk[Number((this.div.id)[2])-1] = false
+        }
+        console.log(this.div.id, castleWht, castleBlk)
+      }
+      
       this.div.parentElement.classList.remove(this.key)
       event.currentTarget.innerHTML = ''
       event.currentTarget.classList.remove(`${this.key=="white"?"black":"white"}`)
@@ -77,7 +95,61 @@ class Piece{
       colorPlay = colorPlay=="white"?"black":"white"
       const svgDiv = document.querySelectorAll(".position > div")
       svgDiv.forEach(d=>d.style.rotate = `${colorPlay=="white"?'0':"180"}deg`)
+      
+      //check if king and castle
+      if(this.div.id == "wkg" || this.div.id == "bkg")
+      {
+        if(
+          this.pos == "13" ||
+          this.pos == "17" ||
+          this.pos == "83" ||
+          this.pos == "87"
+        ){
+          this.castle(this.pos)
+        }else{
+          if(this.key == "white"){
+            castleWht.forEach(c=>c = false)
+          }else{
+            castleBlk.forEach(c=>c = false)
+          }
+        }
+      }
+      
+      
+      
       this.removeAllowed()
+    }
+  }
+  
+  castle(pos){
+    let rook
+    let posDiv
+    let prevRookPos, nextRookPos
+    
+    if(pos[1]=="3"){
+      prevRookPos = Number(pos) - 2
+      nextRookPos = Number(pos) + 1
+    }else{
+      prevRookPos = Number(pos) + 1
+      nextRookPos = Number(pos) - 1
+    }
+    
+    rook = document.getElementById(`${prevRookPos}`).firstElementChild
+    posDiv = document.getElementById(`${nextRookPos}`)
+    rook.parentElement.classList.remove(this.key)
+    rook.remove()
+    posDiv.appendChild(rook)
+    posDiv.classList.add(this.key)
+    
+    if(this.key=="white"){
+      castleWht[0] = false
+      castleWht[1] = false
+      
+      whtRok[Number((rook.id)[2])-1].pos = posDiv.id
+    }else{
+      castleBlk[1] = false
+      castleBlk[0] = false
+      blkRok[Number((rook.id)[2])-1].pos = posDiv.id
     }
   }
   
@@ -98,7 +170,9 @@ class Pawn extends Piece{
     if (Number(this.pos[0]<8) && this.key == "white"){
       //initial pos
       if(this.pos[0] == "2"){
-        if(document.getElementById(`${(Number(this.pos[0])+2)+this.pos[1]}`).children.length == 0){
+        if((document.getElementById(`${(Number(this.pos[0])+2)+this.pos[1]}`).children.length == 0) &&
+          document.getElementById(`${(Number(this.pos[0])+1)+this.pos[1]}`).children.length == 0
+        ){
           legal.push((Number(this.pos[0])+2)+this.pos[1])
         }
       }
@@ -140,7 +214,9 @@ class Pawn extends Piece{
       
     }else if(Number(this.pos[0])>1  && this.key == "black"){
       if(this.pos[0] == "7"){
-        if(document.getElementById(`${(Number(this.pos[0])-2)+this.pos[1]}`).children.length == 0){
+        if((document.getElementById(`${(Number(this.pos[0])-2)+this.pos[1]}`).children.length == 0) &&
+          document.getElementById(`${(Number(this.pos[0])-1)+this.pos[1]}`).children.length == 0)
+        {
           legal.push((Number(this.pos[0])-2)+this.pos[1])
         }
       }
@@ -196,7 +272,7 @@ class Rook extends Piece{
     let y = Number(this.pos[0])
     let x = Number(this.pos[1])
     let c = y
-    console.log(this.key)
+    
     
     //vertical up
     while(c<8){
@@ -559,7 +635,6 @@ class Bishop extends Piece{
     }
     
     if(this.id == "wq" || this.id == "bq"){
-      console.log(legal, 'b')
       return legal
     }else{
       this.setLegal(legal)
@@ -580,7 +655,7 @@ class King extends Piece{
     let y = Number(this.pos[0])
     for(let i = -1; i < 2; i++){
       for(let j = -1; j < 2; j++){
-        //console.log(y+i, x+j)
+        
         if(document.getElementById(`${y+i}${x+j}`)){
           if(x==0&&y==0)continue
           if(
@@ -595,6 +670,38 @@ class King extends Piece{
         }
       }
     }
+    
+    
+    //check if castle
+    if((this.key == "white" && (castleWht[0] || castleWht[1])) ||
+      (this.key == "black" && (castleBlk[0] || castleBlk[1])) 
+      ){
+      let c = x
+      if(castleBlk[0] || castleWht[0]){
+        while(c>2){
+          c--
+          if(document.getElementById(`${y}${c}`).hasChildNodes()){
+            break
+          }else if(c == 2){
+            legal.push(`${y}${x-2}`)
+          }
+        }
+      }
+      c = x
+      if(castleBlk[1] || castleWht[1]){
+        while(c<7){
+          c++
+          if(document.getElementById(`${y}${c}`).hasChildNodes()){
+            break
+          }else if(c == 7){
+            legal.push(`${y}${x+2}`)
+          }
+        }
+      }
+      
+    }
+    
+    
     this.setLegal(legal)
   }
 }
@@ -646,7 +753,7 @@ function setUpPieces(){
     whtBish[i-1].addToBoard()
   }
   
-  whtKing = new King({key: "white", pos: "15", id: "wk", svg: white[4].value})
+  whtKing = new King({key: "white", pos: "15", id: "wkg", svg: white[4].value})
   whtKing.addToBoard()
   whtQuen[0] = new Queen({key: "white", pos: "14", id: "wq", svg: white[3].value})
   whtQuen[0].addToBoard()
