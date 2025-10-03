@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Complete Chess (All Rules)</title>
+  <style>
+    :root{
+      --board-size: 560px;
+      --cell: calc(var(--board-size) / 8);
+    }
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#1f1f1f;
+      color:#eee;
+      font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;
+    }
+    .container{
+      display:grid;
+      grid-template-columns: var(--board-size) 340px;
+      gap:20px;
+      align-items:start;
+    }
+    #chessboard{
+      width:var(--board-size);
+      height:var(--board-size);
+      display:grid;
+      grid-template-columns:repeat(8,1fr);
+      grid-template-rows:repeat(8,1fr);
+      border:6px solid #222;
+      box-shadow:0 8px 30px rgba(0,0,0,0.6);
+      user-select:none;
+      background: #ddd;
+    }
+    .square{
+      width:var(--cell);
+      height:var(--cell);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:36px;
+      cursor:pointer;
+      position:relative;
+    }
+    .light{ background:#f0d9b5; }
+    .dark{ background:#b58863; }
+    .highlight{ outline: 3px solid rgba(255,255,0,0.9); }
+    .move-dot{
+      position:absolute;
+      width:14px;height:14px;border-radius:50%;
+      background:rgba(0,0,0,0.25);
+      transform:translate(-50%,-50%);
+      left:50%; top:50%;
+      pointer-events:none;
+    }
+    .capture-dot{
+      position:absolute;
+      width:80%; height:80%;
+      border-radius:8px; background:rgba(255,0,0,0.15);
+      left:10%; top:10%; pointer-events:none;
+    }
+    .sidebar{
+      width:340px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .panel{
+      background:#2b2b2b;
+      padding:12px;
+      border-radius:8px;
+      box-shadow:inset 0 -2px 0 rgba(255,255,255,0.02);
+    }
+    .controls{ display:flex; gap:8px; margin-bottom:8px; }
+    button{
+      background:#444; color:#fff; border:0; padding:8px 10px; border-radius:6px; cursor:pointer;
+    }
+    button.primary{ background:#1f8feb; }
+    .status{ font-weight:600; margin-bottom:6px; }
+    .moves{ max-height:360px; overflow:auto; background:#222; padding:8px; border-radius:6px; }
+    .move-row{ display:flex; gap:8px; padding:4px 0; }
+    .move-num{ color:#888; width:28px; text-align:right; }
+    .move-san{ flex:1; color:#fff; padding-left:8px; }
+    #promotionModal{
+      position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
+      background:#eee; color:#111; padding:12px; border-radius:8px; display:none; z-index:40;
+      box-shadow:0 8px 30px rgba(0,0,0,0.5);
+    }
+    #promotionModal button{ font-size:28px; background:#ddd; margin:6px; }
+    footer.note{ color:#999; font-size:13px; margin-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="chessboard" class="panel" aria-label="Chessboard"></div>
+
+    <div class="sidebar">
+      <div class="panel">
+        <div class="controls">
+          <button id="newGame" class="primary">New Game</button>
+          <button id="undoBtn">Undo</button>
+          <button id="redoBtn">Redo</button>
+        </div>
+        <div class="status" id="status">White to move</div>
+        <div class="panel" style="background:#262626; padding:8px;">
+          <div style="font-size:13px; color:#bbb; margin-bottom:6px;">Game info</div>
+          <div>Turn: <span id="turnLabel">White</span></div>
+          <div>Halfmove clock: <span id="halfmove">0</span></div>
+          <div>Fullmove: <span id="fullmove">1</span></div>
+          <div>Castling: <span id="castlingInfo">KQkq</span></div>
+          <div>En passant: <span id="enpass">-</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div style="font-weight:700; margin-bottom:8px;">Move History</div>
+        <div class="moves" id="moves"></div>
+      </div>
+
+      <div class="panel note">This game includes: castling (legal checks), en passant, pawn promotion, check/checkmate, stalemate, threefold repetition, fifty-move rule, insufficient material, move history, undo/redo.</div>
+    </div>
+  </div>
+
+  <div id="promotionModal">
+    <div style="font-weight:700; margin-bottom:8px;">Promote pawn to:</div>
+    <div>
+      <button data-piece="Q">♕</button>
+      <button data-piece="R">♖</button>
+      <button data-piece="B">♗</button>
+      <button data-piece="N">♘</button>
+    </div>
+  </div>
+
+<script>
+/*
+ Complete chess engine (rules):
+ - Full move generation with legality checks (no leaving/entering check)
+ - Castling rules: king/rook unmoved, no pieces between, not in check, king doesn't pass through attacked square
+ - En passant with proper capture and checks
+ - Pawn promotion with modal selection
+ - Check detection, checkmate and stalemate
+ - Draw detection: fifty-move rule, threefold repetition, insufficient material
+ - Move history & undo/redo
+ - SAN-ish move list (simple)
+*/
+
+// ---------- Utilities & board setup ----------
+const Unicode = {
+  white: { K:'♔', Q:'♕', R:'♖', B:'♗', N:'♘', P:'♙' },
+  black: { K:'♚', Q:'♛', R:'♜', B:'♝', N:'♞', P:'♟' }
+};
+
+function cloneBoard(b){
+  return b.map(r => r.slice());
+}
+
+function pieceColor(p){
+  if(!p) return null;
+  return Object.values(Unicode.white).includes(p) ? 'white' : 'black';
+}
+function pieceType(p){
+  if(!p) return null;
+  for(const [t,ch] of Object.entries(Unicode.white)){
+    if (ch === p) return t;
+  }
+  for(const [t,ch] of Object.entries(Unicode.black)){
+    if (ch === p) return t;
+  }
+  return null;
+}
+
+// Initial board (array of 8 rows, 0 top/black side)
+function initialPosition(){
+  return [
+    ['♜','♞','♝','♛','♚','♝','♞','♜'],
+    ['♟','♟','♟','♟','♟','♟','♟','♟'],
+    ['','','','','','','',''],
+    ['','','','','','','',''],
+    ['','','','','','','',''],
+    ['','','','','','','',''],
+    ['♙','♙','♙','♙','♙','♙','♙','♙'],
+    ['♖','♘','♗','♕','♔','♗','♘','♖']
+  ];
+}
+
+// ---------- Game state ----------
+let board = initialPosition();
+let turn = 'white';
+let enPassant = null; // {row,col} square where pawn can be captured (target square), or null
+let castlingRights = { white:{K:true,Q:true}, black:{K:true,Q:true} };
+let halfmoveClock = 0;
+let fullmoveNumber = 1;
+
+// History and repetition tracking
+let history = []; // stack of move objects for undo
+let redoStack = [];
+let positionCounts = new Map(); // key -> count for threefold
+
+// UI references
+const boardEl = document.getElementById('chessboard');
+const statusEl = document.getElementById('status');
+const movesEl = document.getElementById('moves');
+const turnLabel = document.getElementById('turnLabel');
+const halfmoveEl = document.getElementById('halfmove');
+const fullmoveEl = document.getElementById('fullmove');
+const castlingInfoEl = document.getElementById('castlingInfo');
+const enpassEl = document.getElementById('enpass');
+const promotionModal = document.getElementById('promotionModal');
+const newGameBtn = document.getElementById('newGame');
+const undoBtn = document.getElementById('undoBtn');
+const redoBtn = document.getElementById('redoBtn');
+
+// ---------- Rendering ----------
+function renderBoard(){
+  boardEl.innerHTML = '';
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      const sq = document.createElement('div');
+      sq.className = 'square ' + (((r+c)%2===0) ? 'light':'dark');
+      sq.dataset.r = r; sq.dataset.c = c;
+      const p = board[r][c];
+      sq.textContent = p;
+      sq.addEventListener('click', ()=>onSquareClick(r,c));
+      boardEl.appendChild(sq);
+    }
+  }
+  updateStatusUI();
+  renderMoveList();
+}
+
+function updateStatusUI(){
+  const next = capitalize(turn);
+  turnLabel.textContent = next;
+  halfmoveEl.textContent = halfmoveClock;
+  fullmoveEl.textContent = fullmoveNumber;
+  castlingInfoEl.textContent = getCastlingString();
+  enpassEl.textContent = enPassant ? `${coordToAlg(enPassant.row,enPassant.col)}` : '-';
+  // status
+  const inCheck = isKingInCheck(turn);
+  const legal = generateAllLegalMoves(turn);
+  if (legal.length===0){
+    if (inCheck) statusEl.textContent = `${capitalize(turn)} is checkmated — ${opposite(turn)} wins`;
+    else statusEl.textContent = `Stalemate — draw`;
+  } else {
+    // draw by threefold / 50-move / insufficient material detection
+    const draw = evaluateDraw();
+    if (draw) statusEl.textContent = `Draw — ${draw}`;
+    else statusEl.textContent = `${next} to move` + (inCheck ? ' — check!' : '');
+  }
+}
+
+function renderMoveList(){
+  movesEl.innerHTML = '';
+  // build rows: number + white move + black move
+  for(let i=0;i<history.length;i++){
+    if (i%2 === 0){
+      // start a row
+      const row = document.createElement('div');
+      row.className = 'move-row';
+      const num = document.createElement('div');
+      num.className = 'move-num';
+      num.textContent = `${Math.floor(i/2)+1}.`;
+      const san = document.createElement('div');
+      san.className = 'move-san';
+      san.textContent = history[i].san || history[i].uci;
+      row.appendChild(num);
+      row.appendChild(san);
+      // if next move exists (black)
+      if (history[i+1]){
+        const san2 = document.createElement('div');
+        san2.className = 'move-san';
+        san2.textContent = history[i+1].san || history[i+1].uci;
+        row.appendChild(san2);
+      }
+      movesEl.appendChild(row);
+    }
+  }
+  movesEl.scrollTop = movesEl.scrollHeight;
+}
+
+// ---------- Helpers ----------
+function capitalize(s){ return s[0].toUpperCase()+s.slice(1); }
+function opposite(s){ return s==='white'?'black':'white'; }
+function inBounds(r,c){ return r>=0 && r<8 && c>=0 && c<8; }
+function coordToAlg(r,c){ return String.fromCharCode(97+c) + (8-r); }
+function algToCoord(str){
+  const c = str.charCodeAt(0)-97;
+  const r = 8 - parseInt(str[1],10);
+  return {r,c};
+}
+function getCastlingString(){
+  let s='';
+  if (castlingRights.white.K) s+='K';
+  if (castlingRights.white.Q) s+='Q';
+  if (castlingRights.black.K) s+='k';
+  if (castlingRights.black.Q) s+='q';
+  return s || '-';
+}
+
+// Create a simple position key for repetition counting
+function positionKey(){
+  // board rows + turn + castling + enpass
+  const b = board.map(r => r.map(p=>p?p:'1').join('')).join('/');
+  const ep = enPassant ? `${enPassant.row},${enPassant.col}` : '-';
+  const cr = `${castlingRights.white.K? 'K':''}${castlingRights.white.Q? 'Q':''}${castlingRights.black.K? 'k':''}${castlingRights.black.Q? 'q':''}`;
+  return `${b} ${turn} ${cr} ${ep}`;
+}
+function incPositionCount(){
+  const k = positionKey();
+  const n = positionCounts.get(k) || 0;
+  positionCounts.set(k, n+1);
+}
+function getPositionCount(k){
+  return positionCounts.get(k) || 0;
+}
+
+// ---------- Move generation (pseudo-legal) ----------
+/*
+ We generate pseudo-legal moves for a side (moves that follow piece movement & capturing rules).
+ Later we will filter them by legality (moves that don't leave own king in check).
+ Move representation:
+  {sr,sc, tr,tc, piece, capture:captPiece||'', promotion: 'Q'|'R'|'B'|'N'|null, isEnPassant, isCastleKingSide, isCastleQueenSide}
+*/
+
+function generatePseudoMovesForSquare(sr,sc){
+  const p = board[sr][sc];
+  if(!p) return [];
+  const color = pieceColor(p);
+  const type = pieceType(p);
+  const moves = [];
+  const forward = color==='white' ? -1 : 1;
+  // pawn
+  if (type==='P'){
+    const oneR = sr + forward;
+    // forward one
+    if (inBounds(oneR,sc) && board[oneR][sc]===''){
+      // promotion?
+      if ((color==='white' && oneR===0) || (color==='black' && oneR===7)){
+        ['Q','R','B','N'].forEach(pr => moves.push({sr,sc,tr:oneR,tc:sc,piece:p,promotion:pr}));
+      } else {
+        moves.push({sr,sc,tr:oneR,tc:sc,piece:p});
+        // two steps
+        const startRow = color==='white'?6:1;
+        const twoR = sr + 2*forward;
+        if (sr===startRow && board[twoR][sc]==='' ){
+          moves.push({sr,sc,tr:twoR,tc:sc,piece:p, doublePush:true});
+        }
+      }
+    }
+    // captures
+    for(const dc of [-1,1]){
+      const cr = sr + forward, cc = sc + dc;
+      if(!inBounds(cr,cc)) continue;
+      if (board[cr][cc] !== '' && pieceColor(board[cr][cc]) !== color){
+        // promotion?
+        if ((color==='white' && cr===0) || (color==='black' && cr===7)){
+          ['Q','R','B','N'].forEach(pr => moves.push({sr,sc,tr:cr,tc:cc,piece:p,capture:board[cr][cc],promotion:pr}));
+        } else {
+          moves.push({sr,sc,tr:cr,tc:cc,piece:p,capture:board[cr][cc]});
+        }
+      }
+      // en passant capture
+      if (enPassant && cr===enPassant.row && cc===enPassant.col){
+        // the captured pawn sits behind the enPassant square
+        const capR = color==='white' ? cr+1 : cr-1;
+        const capP = board[capR][cc];
+        if (capP && pieceType(capP)==='P' && pieceColor(capP)!==color){
+          moves.push({sr,sc,tr:cr,tc:cc,piece:p,isEnPassant:true,capture:capP});
+        }
+      }
+    }
+    return moves;
+  }
+
+  // knight
+  if (type==='N'){
+    const deltas = [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]];
+    for(const [dr,dc] of deltas){
+      const tr = sr+dr, tc=sc+dc;
+      if(!inBounds(tr,tc)) continue;
+      if(board[tr][tc]==='' || pieceColor(board[tr][tc])!==pieceColor(p)){
+        moves.push({sr,sc,tr,tc,piece:p, capture: board[tr][tc] || ''});
+      }
+    }
+    return moves;
+  }
+
+  // sliding pieces: rook, bishop, queen
+  if (type==='R' || type==='B' || type==='Q'){
+    const dirs = [];
+    if (type==='R' || type==='Q') dirs.push([1,0],[-1,0],[0,1],[0,-1]);
+    if (type==='B' || type==='Q') dirs.push([1,1],[1,-1],[-1,1],[-1,-1]);
+    for(const [dr,dc] of dirs){
+      let tr=sr+dr, tc=sc+dc;
+      while(inBounds(tr,tc)){
+        if (board[tr][tc]===''){
+          moves.push({sr,sc,tr,tc,piece:p});
+        } else {
+          if (pieceColor(board[tr][tc]) !== pieceColor(p)){
+            moves.push({sr,sc,tr,tc,piece:p,capture:board[tr][tc]});
+          }
+          break;
+        }
+        tr+=dr; tc+=dc;
+      }
+    }
+    return moves;
+  }
+
+  // king
+  if (type==='K'){
+    for(let dr=-1;dr<=1;dr++){
+      for(let dc=-1;dc<=1;dc++){
+        if(dr===0 && dc===0) continue;
+        const tr=sr+dr, tc=sc+dc;
+        if(!inBounds(tr,tc)) continue;
+        if(board[tr][tc]==='' || pieceColor(board[tr][tc]) !== pieceColor(p)){
+          moves.push({sr,sc,tr,tc,piece:p, capture: board[tr][tc] || ''});
+        }
+      }
+    }
+    // castling (king side / queen side) - basic checks here, full legality checked later
+    if (pieceColor(p)==='white' && sr===7 && sc===4){
+      if (castlingRights.white.K && board[7][5]==='' && board[7][6]===''){
+        moves.push({sr,sc,tr:7,tc:6,piece:p, isCastleKingSide:true});
+      }
+      if (castlingRights.white.Q && board[7][3]==='' && board[7][2]==='' && board[7][1]===''){
+        moves.push({sr,sc,tr:7,tc:2,piece:p, isCastleQueenSide:true});
+      }
+    }
+    if (pieceColor(p)==='black' && sr===0 && sc===4){
+      if (castlingRights.black.K && board[0][5]==='' && board[0][6]===''){
+        moves.push({sr,sc,tr:0,tc:6,piece:p, isCastleKingSide:true});
+      }
+      if (castlingRights.black.Q && board[0][3]==='' && board[0][2]==='' && board[0][1]===''){
+        moves.push({sr,sc,tr:0,tc:2,piece:p, isCastleQueenSide:true});
+      }
+    }
+    return moves;
+  }
+
+  return [];
+}
+
+function generateAllPseudoMoves(side){
+  const moves=[];
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      const p=board[r][c];
+      if(p && pieceColor(p)===side){
+        moves.push(...generatePseudoMovesForSquare(r,c));
+      }
+    }
+  }
+  return moves;
+}
+
+// ---------- Make/undo move with history ----------
+function makeMove(move){
+  // move: object from generator; must update board, castling rights, enPassant, halfmove, fullmove
+  // store a history entry with everything needed for undo
+  const entry = {
+    sr:move.sr, sc:move.sc, tr:move.tr, tc:move.tc,
+    piece: move.piece,
+    captured: board[move.tr][move.tc] || (move.isEnPassant ? (turn==='white' ? board[move.tr+1][move.tc] : board[move.tr-1][move.tc]) : ''),
+    promotion: move.promotion || null,
+    prevEnPassant: enPassant ? {row:enPassant.row, col:enPassant.col} : null,
+    prevCastling: { white:{...castlingRights.white}, black:{...castlingRights.black} },
+    prevHalfmove: halfmoveClock,
+    prevFullmove: fullmoveNumber
+  };
+
+  // reset redo stack on a new move
+  redoStack = [];
+
+  // apply move
+  // handle en passant capture removal
+  if (move.isEnPassant){
+    const capR = turn==='white' ? move.tr+1 : move.tr-1;
+    entry.captured = board[capR][move.tc];
+    board[capR][move.tc] = '';
+  }
+
+  // handle castling rook movement
+  if (move.isCastleKingSide){
+    if (turn==='white'){
+      board[7][5] = board[7][7]; board[7][7]='';
+    } else {
+      board[0][5] = board[0][7]; board[0][7]='';
+    }
+  }
+  if (move.isCastleQueenSide){
+    if (turn==='white'){
+      board[7][3] = board[7][0]; board[7][0]='';
+    } else {
+      board[0][3] = board[0][0]; board[0][0]='';
+    }
+  }
+
+  // move piece
+  board[move.tr][move.tc] = move.promotion ? (turn==='white'? Unicode.white[move.promotion] : Unicode.black[move.promotion]) : board[move.sr][move.sc];
+  board[move.sr][move.sc] = '';
+
+  // update castling rights if king/rook moved or rook captured
+  if (pieceType(move.piece) === 'K'){
+    castlingRights[turn].K = false; castlingRights[turn].Q = false;
+  }
+  if (pieceType(move.piece) === 'R'){
+    if (turn==='white'){
+      if (move.sr===7 && move.sc===0) castlingRights.white.Q=false;
+      if (move.sr===7 && move.sc===7) castlingRights.white.K=false;
+    } else {
+      if (move.sr===0 && move.sc===0) castlingRights.black.Q=false;
+      if (move.sr===0 && move.sc===7) castlingRights.black.K=false;
+    }
+  }
+  // if rook captured, adjust opponent castling rights
+  if (entry.captured){
+    if (pieceType(entry.captured) === 'R'){
+      // if opponent rook from corner removed, update their rights
+      if (turn==='white'){
+        if (move.tr===0 && move.tc===0) castlingRights.black.Q=false;
+        if (move.tr===0 && move.tc===7) castlingRights.black.K=false;
+      } else {
+        if (move.tr===7 && move.tc===0) castlingRights.white.Q=false;
+        if (move.tr===7 && move.tc===7) castlingRights.white.K=false;
+      }
+    }
+  }
+
+  // update enPassant: only set if pawn double pushed
+  if (move.doublePush){
+    enPassant = {row: (turn==='white'? move.tr+1 : move.tr-1), col:move.tc};
+  } else {
+    enPassant = null;
+  }
+
+  // update halfmove clock
+  if (pieceType(move.piece) === 'P' || entry.captured) halfmoveClock = 0;
+  else halfmoveClock++;
+
+  // update fullmove number
+  if (turn==='black') fullmoveNumber++;
+
+  // produce SAN (simple): capture mark 'x', check/checkmate appended
+  entry.san = generateSAN(move, entry.captured);
+  entry.uci = `${coordToAlg(move.sr,move.sc)}${coordToAlg(move.tr,move.tc)}${move.promotion?move.promotion:''}`;
+
+  // push to history stack and increment repetition count
+  history.push(entry);
+  incPositionCount(); // after the move, record position of the new side to move (we count current position)
+  // switch side
+  turn = opposite(turn);
+  // after switching, update UI
+  renderBoard();
+}
+

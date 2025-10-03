@@ -1,31 +1,57 @@
+:root {
+  --light:#e8cda1;
+  --dark:#b58863;
+  --accent:#2b6cb0;
+}
+
 body {
-  width: 100vw;
   height: 100vh;
+  width: 100vw;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #543900;
+  background: white;
   margin: 0;
   padding: 0;
 }
 
-body .container {
+body section .container {
   padding: 1rem;
   flex: 1;
   aspect-ratio: 1 / 1;
+  position: relative;
 }
 
-body .container .chess-board {
+body section .container .promote {
+  height: 12.5%;
+  width: 50%;
+  display: flex;
+  flex-flow: row;
+  border: 3px black solid;
+  justify-content: space-evenly;
+  align-items: center;
+  border-radius: 5px;
+  position: absolute;
+  left: 25%;
+}
+
+body section .container .promote svg {
+  height: 70%;
+}
+
+body section .container .chess-board {
   height: 100%;
   width: 100%;
   aspect-ratio: 1 / 1;
-  border: #251811 solid 2px;
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap-reverse;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 0 10px 20px rgba(0, 0, 0, 0.08);
 }
 
-body .container .chess-board .allowed::before {
+body section .container .chess-board .allowed::before {
   content: "";
   border-radius: 50%;
   width: 80%;
@@ -37,7 +63,7 @@ body .container .chess-board .allowed::before {
   bottom: 10%;
 }
 
-body .container .chess-board .allowed::after {
+body section .container .chess-board .allowed::after {
   content: "";
   border-radius: 50%;
   width: 60%;
@@ -49,37 +75,43 @@ body .container .chess-board .allowed::after {
   bottom: 20%;
 }
 
-body .container .chess-board .position {
-  height: 12.5%;
-  width: 12.5%;
-  background: #d0a978;
+body section .container .chess-board > div {
   position: relative;
-}
-
-body .container .chess-board .position div {
   display: flex;
-  flex-direction: column-reverse;
   justify-content: center;
   align-items: center;
-  height: 100%;
-  width: 100%;
-  transition: 0.3s;
 }
 
-body .container .chess-board .position div svg {
+body section .container .chess-board > div svg {
   height: 80%;
 }
 
-body .container .chess-board .position div svg path {
-  box-shadow: 10px 0 0;
+body section .container .chess-board > div.light {
+  background: var(--light);
 }
 
-body .container .chess-board > :nth-child(odd).even {
-  background: #986c36;
+body section .container .chess-board > div.dark {
+  background: var(--dark);
 }
 
-body .container .chess-board > :nth-child(even).odd {
-  background: #986c36;
+.check {
+  background: #e43724 !important;
+}
+
+/* Portrait = height (vh) > width (vw) */
+@media (orientation: portrait) {
+  section {
+    width: 100vw !important;
+    height: 100vw !important;
+  }
+}
+
+/* Landscape = width (vw) > height (vh) */
+@media (orientation: landscape) {
+  section {
+    width: 100vh !important;
+    height: 100vh !important;
+  }
 }
 
 /* Flip every even row */

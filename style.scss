@@ -1,24 +1,50 @@
+:root{
+  --light:#e8cda1;
+  --dark:#b58863;
+  --accent:#2b6cb0;
+}
+
+
 body{
-  width: 100vw;
   height: 100vh;
+  width: 100vw;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #543900;
+  background: white;
   margin: 0;
   padding: 0;
-  .container{
+  section{
+    .container{
     padding: 1rem;
     flex: 1;
     aspect-ratio: 1 / 1;
+    position: relative;
+    .promote{
+      height: 12.5%;
+      width: 50%;
+      display: flex;
+      flex-flow: row;
+      border: 3px black solid;
+      justify-content: space-evenly;
+      align-items: center;
+      border-radius: 5px;
+      position: absolute;
+      left: 25%;
+      svg{
+        height: 70%;
+      }
+    }
     .chess-board{
       height: 100%;
       width: 100%;
       aspect-ratio: 1 / 1;
-      border: #251811 solid 2px;
-      display: flex;
-      flex-direction: row;
-      flex-wrap: wrap-reverse;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      grid-template-rows: repeat(8, 1fr);
+      overflow: hidden;
+      border-radius: 8px;
+      box-shadow: 0 0 10px 20px rgba(0,0,0,0.08);
       .allowed::before{
         content: "";
         border-radius: 50%;
@@ -31,46 +57,56 @@ body{
         bottom: 10%;
       }
       .allowed::after{
-          content: "";
-          border-radius: 50%;
-          width: 60%;
-          height: 60%;
-          background: black;
-          opacity: 10%;
-          position: absolute;
-          left: 20%;
-          bottom: 20%;
-        }
-      .position{
-        height: 12.5%;
-        width: 12.5%;
-        background: #d0a978;
+        content: "";
+        border-radius: 50%;
+        width: 60%;
+        height: 60%;
+        background: black;
+        opacity: 10%;
+        position: absolute;
+        left: 20%;
+        bottom: 20%;
+      }
+      > div{
+        
         position: relative;
-        div{
-          display: flex;
-          flex-direction: column-reverse;
-          justify-content: center;
-          align-items: center;
-          height: 100%;
-          width: 100%;
-          transition: 0.3s;
-          svg{
-            height: 80%;
-            path{
-              box-shadow: 10px 0 0;
-            }
-          }
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        svg{
+          height: 80%;
         }
-      }
-      > :nth-child(odd).even{
-        background: #986c36;
-      }
-      > :nth-child(even).odd{
-        background: #986c36;
+        &.light{
+          background: var(--light);
+        }
+        &.dark{
+          background: var(--dark);
+        }
       }
     }
   }
+  }
 }
+.check{
+  background: #e43724 !important;
+}
+
+/* Portrait = height (vh) > width (vw) */
+@media (orientation: portrait) {
+  section {
+    width: 100vw !important;
+    height: 100vw !important;
+  }
+}
+
+/* Landscape = width (vw) > height (vh) */
+@media (orientation: landscape) {
+  section {
+    width: 100vh !important;
+    height: 100vh !important;
+  }
+}
+ 
 
 
 /* Flip every even row */

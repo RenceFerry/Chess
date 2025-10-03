@@ -1,790 +1,327 @@
 import { white, black } from "./chessPieces.js"
 
+let chessDetails = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -"
 const chessBoard = document.querySelector(".chess-board")
-const positions = chessBoard.querySelectorAll(".position")
-let positionsIndx = 0
-let colorPlay
-let blkPawn = []
-let blkRok = []
-let blkKngt = []
-let blkBish = []
-let blkQuen = [];
-let blkKing;
-let whtPawn = []
-let whtRok = []
-let whtKngt = []
-let whtBish = []
-let whtQuen = [];
-let whtKing
-let castleBlk = [true, true]
-let castleWht = [true, true]
+let squares
+const fileAlp = ["a", "b", "c", 'd', 'e', 'f', 'g', 'h']
+const container = document.querySelector(".container")
 
-for(let i = 1; i < 9; i++){
-  for(let j = 1; j < 9; j++){
-    positions[positionsIndx].id = `${i}${j}`
-    positionsIndx++
+class Game{
+  constructor(chessDetails){
+    this.chessDetails = chessDetails
   }
-}
-
-class Piece{
-  constructor({key, id, pos, svg}){
-    this.key = key
-    this.id = id
-    this.pos = pos
-    this.svg = svg
-    this.div
-    this.bindMove = this.move.bind(this)
-  }
+  isWhite(id){return id === id.toUpperCase()}
+  inBounds(r,c){return r>=0&&r<=7&&c>=0&&c<=7}
   
-  addToBoard(){
-    const position = document.getElementById(this.pos)
-    this.div = document.createElement("div")
-    this.div.id = this.id
-    this.div.innerHTML = this.svg
-    position.append(this.div)
-    position.classList.add(this.key)
+  setUp(){
+    const parts = chessDetails.split(" ")
+    this.board = Array(8).fill(null).map(()=>Array(8).fill(null))
+    this.turn = parts[1]
+    const row = parts[0].split('/')
+    this.enp = parts[3]==='-'?'':parts[3]
     
-    this.events()
-  }
-  
-  setLegal(legal){
-    this.removeAllowed()
+    for(let r = 0; r < 8; r++){
+      let file = 0
+      for(const ch of row[r]){
+        if(/[1-8]/.test(ch)){ file += parseInt(ch); }
+        else{ this.board[r][file] = ch; file++; }
+      }
+    }
     
-    legal.forEach(l=>{
-      const pos = document.getElementById(l)
-      pos.classList.add("allowed")
-      pos.onclick = this.bindMove
-    })
+    
+    
+    generateBoard()
+    render(this.board)
+    addEvents(this)
   }
   
-  removeAllowed(){
-    try{
-      const allowedPos = document.querySelectorAll(".allowed")
-      allowedPos.forEach(pos=>{
-        pos.classList.remove("allowed")
-      })
-    }catch(e){}
+  generateMoves(id){
+    let moves = []
+    const r = Number(id[0])
+    const c = Number(id[1])
+    
+    let p = this.board[r][c]
+    if((this.turn === 'w') !== this.isWhite(p))return
+    p = p.toLowerCase()
+    if(p==='p')this.genPawnMoves(r,c,moves)
+    if(p==='r')this.genSlidingMoves(r,c,moves,[[0,1],[0,-1],[1,0],[-1,0]])
+    if(p==='n')this.genKnightMoves(r,c,moves)
+    if(p==='b')this.genSlidingMoves(r,c,moves,[[1,1],[1,-1],[-1,1],[-1,-1]])
+    if(p==='q')this.genSlidingMoves(r,c,moves,[[1,1],[1,-1],[-1,1],[-1,-1],[0,1],[0,-1],[1,0],[-1,0]])
+    if(p==='k')this.genKingMoves(r,c,moves)
+    
+    
+//     for(let r = 0; r<8;r++){
+//       for(let c=0;c<8;c++){
+//         let p = this.board[r][c]
+//         if(!p)continue
+//         
+//         if((this.turn === 'w') !== this.isWhite(p))continue
+//         p = p.toLowerCase()
+//         if(p==='p')this.genPawnMoves(r,c,moves)
+//         if(p==='r')this.genSlidingMoves(r,c,moves,[[0,1],[0,-1],[1,0],[-1,0]])
+//         if(p==='n')this.genKnightMoves(r,c,moves)
+//         if(p==='b')this.genSlidingMoves(r,c,moves,[[1,1],[1,-1],[-1,1],[-1,-1]])
+//         if(p==='q')this.genSlidingMoves(r,c,moves,[[1,1],[1,-1],[-1,1],[-1,-1],[0,1],[0,-1],[1,0],[-1,0]])
+//         if(p==='k')this.genKingMoves(r,c,moves)
+//       }
+//     }
+    
+    
+    this.moves = moves
+    return(moves)
   }
   
-  move(event){
-    if(event.currentTarget.classList.contains("allowed")){
+  genPawnMoves(r,c,moves){
+    const p = this.board[r][c]
+    const dir = this.turn === 'w'?-1:1
+    const startMove = r===6||r===1?true:false
+    
+    //check if start pos
+    if(this.inBounds(r+(2*dir),c) && startMove){
       
-      //check if rook moves and alter castle
-      if(
-        this.pos === "11" ||
-        this.pos === "81" ||
-        this.pos === "18" ||
-        this.pos === "88" 
+      if(!this.board[r+(2*dir)][c] &&
+      !this.board[r+dir][c]
       ){
-        if(this.key == "white"){
-          castleWht[Number((this.div.id)[2])-1] = false
-        }else{
-          castleBlk[Number((this.div.id)[2])-1] = false
-        }
-        console.log(this.div.id, castleWht, castleBlk)
-      }
-      
-      this.div.parentElement.classList.remove(this.key)
-      event.currentTarget.innerHTML = ''
-      event.currentTarget.classList.remove(`${this.key=="white"?"black":"white"}`)
-      event.currentTarget.classList.add(this.key)
-      this.div.remove()
-      event.currentTarget.appendChild(this.div)
-      this.pos = event.currentTarget.id
-      
-      colorPlay = colorPlay=="white"?"black":"white"
-      const svgDiv = document.querySelectorAll(".position > div")
-      svgDiv.forEach(d=>d.style.rotate = `${colorPlay=="white"?'0':"180"}deg`)
-      
-      //check if king and castle
-      if(this.div.id == "wkg" || this.div.id == "bkg")
-      {
-        if(
-          this.pos == "13" ||
-          this.pos == "17" ||
-          this.pos == "83" ||
-          this.pos == "87"
-        ){
-          this.castle(this.pos)
-        }else{
-          if(this.key == "white"){
-            castleWht.forEach(c=>c = false)
-          }else{
-            castleBlk.forEach(c=>c = false)
-          }
-        }
-      }
-      
-      
-      
-      this.removeAllowed()
-    }
-  }
-  
-  castle(pos){
-    let rook
-    let posDiv
-    let prevRookPos, nextRookPos
-    
-    if(pos[1]=="3"){
-      prevRookPos = Number(pos) - 2
-      nextRookPos = Number(pos) + 1
-    }else{
-      prevRookPos = Number(pos) + 1
-      nextRookPos = Number(pos) - 1
-    }
-    
-    rook = document.getElementById(`${prevRookPos}`).firstElementChild
-    posDiv = document.getElementById(`${nextRookPos}`)
-    rook.parentElement.classList.remove(this.key)
-    rook.remove()
-    posDiv.appendChild(rook)
-    posDiv.classList.add(this.key)
-    
-    if(this.key=="white"){
-      castleWht[0] = false
-      castleWht[1] = false
-      
-      whtRok[Number((rook.id)[2])-1].pos = posDiv.id
-    }else{
-      castleBlk[1] = false
-      castleBlk[0] = false
-      blkRok[Number((rook.id)[2])-1].pos = posDiv.id
-    }
-  }
-  
-}
-
-class Pawn extends Piece{
-  events(){
-    this.div.addEventListener("click", () => {
-      if(this.key==colorPlay)this.legalMoves()
-    })
-  }
-  
-  legalMoves(){
-  
-    let legal = []
-    
-    //check color
-    if (Number(this.pos[0]<8) && this.key == "white"){
-      //initial pos
-      if(this.pos[0] == "2"){
-        if((document.getElementById(`${(Number(this.pos[0])+2)+this.pos[1]}`).children.length == 0) &&
-          document.getElementById(`${(Number(this.pos[0])+1)+this.pos[1]}`).children.length == 0
-        ){
-          legal.push((Number(this.pos[0])+2)+this.pos[1])
-        }
-      }
-      //check pos
-      if(
-        document.getElementById(`${(Number(this.pos[0])+1)+this.pos[1]}`).children.length == 0
-        ){
-        legal.push((Number(this.pos[0])+1)+this.pos[1])
-      }
-      //check if pawn can eat and not in edge
-      if(this.pos[1]!="8"&&this.pos[1]!="1"){
-        if(document.getElementById(`${(Number(this.pos[0])+1)+String ((Number(this.pos[1])+1))}`).classList.contains("black")){
-          legal.push(
-            (Number(this.pos[0])+1)+String((Number(this.pos[1])+1))
-          )
-        }
-        if(document.getElementById(`${(Number(this.pos[0])+1)+String((Number(this.pos[1])-1))}`).classList.contains("black")){
-          legal.push(
-            (Number(this.pos[0])+1)+String(Number(this.pos[1])-1)
-          )         
-        }
-      }//if pawn can eat and in pos 1 8
-      else if(this.pos[1]=="1"){
-        if(document.getElementById(`${(Number(this.pos[0])+1)+String(Number(this.pos[1])+1)}`).classList.contains("black")){
-          legal.push(
-            (Number(this.pos[0])+1)+String(Number(this.pos[1])+1)
-          )
-        }
-      }
-      if(this.pos[1]=="8"){
-        if(document.getElementById(`${(Number(this.pos[0])+1)+String(Number(this.pos[1])-1)}`).classList.contains("black")){
-          legal.push(
-            (Number(this.pos[0])+1)+String(Number(this.pos[1])-1)
-          )
-        }
-      }
-      
-      this.setLegal(legal)
-      
-    }else if(Number(this.pos[0])>1  && this.key == "black"){
-      if(this.pos[0] == "7"){
-        if((document.getElementById(`${(Number(this.pos[0])-2)+this.pos[1]}`).children.length == 0) &&
-          document.getElementById(`${(Number(this.pos[0])-1)+this.pos[1]}`).children.length == 0)
-        {
-          legal.push((Number(this.pos[0])-2)+this.pos[1])
-        }
-      }
-      
-      if(
-        document.getElementById(`${(Number(this.pos[0])-1)+this.pos[1]}`).children.length == 0
-        ){
-        legal.push((Number(this.pos[0])-1)+this.pos[1])
-      }
-      //check if pawn can eat and not in edge
-      if(this.pos[1]!="8"&&this.pos[1]!="1"){
-        if(document.getElementById(`${(Number(this.pos[0])-1)+String ((Number(this.pos[1])-1))}`).classList.contains("white")){
-          legal.push(
-            (Number(this.pos[0])-1)+String((Number(this.pos[1])-1))
-          )
-        }
-        if(document.getElementById(`${(Number(this.pos[0])-1)+String((Number(this.pos[1])+1))}`).classList.contains("white")){
-          legal.push(
-            (Number(this.pos[0])-1)+String(Number(this.pos[1])+1)
-          )         
-        }
-      }//if pawn can eat and in pos 1 8
-      else if(this.pos[1]=="1"){
-        if(document.getElementById(`${(Number(this.pos[0])-1)+String(Number(this.pos[1])+1)}`).classList.contains("white")){
-          legal.push(
-            (Number(this.pos[0])-1)+String(Number(this.pos[1])+1)
-          )
-        }
-      }
-      if(this.pos[1]=="8"){
-        if(document.getElementById(`${(Number(this.pos[0])-1)+String(Number(this.pos[1])-1)}`).classList.contains("white")){
-          legal.push(
-            (Number(this.pos[0])-1)+String(Number(this.pos[1])-1)
-          )
-        }
-      }
-      
-      this.setLegal(legal)
-    }
-  }
-  
-}
-
-class Rook extends Piece{
-  events(){
-    this.div.addEventListener("click",()=>{
-      if(this.key==colorPlay)this.legalMovesRook()
-    })
-  }
-  
-  legalMovesRook(){
-    let legal = []
-    let y = Number(this.pos[0])
-    let x = Number(this.pos[1])
-    let c = y
-    
-    
-    //vertical up
-    while(c<8){
-      c++
-      if(document.getElementById(`${c}${x}`).children.length == 0){
-        legal.push(`${c}${x}`)
-      }
-      else if(document.getElementById(`${c}${x}`).classList.contains("black")){
-        if(this.key == "white"){
-          legal.push(`${c}${x}`)
-          break
-        }else{
-          break
-        }
-      }
-      else if(document.getElementById(`${c}${x}`).classList.contains("white")){
-        if(this.key == "black"){
-          legal.push(`${c}${x}`)
-          break
-        }else{
-          break
-        }
-      }
-    }
-    //vertical down
-    c = y
-    while(c>1){
-      c--
-      if(document.getElementById(`${c}${x}`).children.length == 0){
-        legal.push(`${c}${x}`)
-      }
-      else if(document.getElementById(`${c}${x}`).classList.contains("black")){
-        if(this.key == "white"){
-          legal.push(`${c}${x}`)
-          break
-        }else{
-          break
-        }
-      }
-      else if(document.getElementById(`${c}${x}`).classList.contains("white")){
-        if(this.key == "black"){
-          legal.push(`${c}${x}`)
-          break
-        }else{
-          break
-        }
-      }
-      }
-    //hori right
-    c = x
-    while(c<8){
-      c++
-      if(document.getElementById(`${y}${c}`).children.length == 0){
-        legal.push(`${y}${c}`)
-      }
-      else if(document.getElementById(`${y}${c}`).classList.contains("black")){
-        if(this.key == "white"){
-          legal.push(`${y}${c}`)
-          break
-        }else{
-          break
-        }
-      }
-      else if(document.getElementById(`${y}${c}`).classList.contains("white")){
-        if(this.key == "black"){
-          legal.push(`${y}${c}`)
-          break
-        }else{
-          break
-        }
-      }
-    }
-    //hori lrft
-    c = x
-    while(c>1){
-      c--
-      if(document.getElementById(`${y}${c}`).children.length == 0){
-        legal.push(`${y}${c}`)
-      }
-      else if(document.getElementById(`${y}${c}`).classList.contains("black")){
-        if(this.key == "white"){
-          legal.push(`${y}${c}`)
-          break
-        }else{
-          break
-        }
-      }
-      else if(document.getElementById(`${y}${c}`).classList.contains("white")){
-        if(this.key == "black"){
-          legal.push(`${y}${c}`)
-          break
-        }else{
-          break
-        }
+        moves.push({from: [r,c], to: [r+(2*dir), c], p:p, enp: `${this.isWhite(p)?fileAlp[c].toUpperCase():fileAlp[c]}`})
       }
     }
     
-    if(this.id == "wq" || this.id == "bq"){
-      return legal
-    }else{
-      this.setLegal(legal)
-    }
-  }
-}
-
-class Knight extends Piece{
-  events(){
-    this.div.addEventListener("click",()=>{
-      if(this.key==colorPlay)this.legalMoves()
-    })
-  }
-  
-  legalMoves(){
-    let legal = []
-    let x = Number(this.pos[1])
-    let y = Number(this.pos[0])
-    let posX = x
-    let posY = y
-    
-    //check up legal moves
-    posY+= 2
-    if(document.getElementById(`${posY}${x}`)){
-      //check right up
-      posX++
-      if(document.getElementById(`${posY}${posX}`)){
-        if(
-          (document.getElementById(`${posY}${posX}`).classList.contains("black") && this.key == "white") || 
-          (document.getElementById(`${posY}${posX}`).classList.contains("white") && this.key == "black")
-          ){
-          legal.push(`${posY}${posX}`)
-        }else if(!(document.getElementById(`${posY}${posX}`).hasChildNodes())){
-          legal.push(`${posY}${posX}`)
-        }
+    if(this.inBounds(r+dir, c)){
+      //promote
+      if(((r===1&&this.isWhite(p))||(r===6&&!this.isWhite(p))) && !this.board[r+dir][c]){
+        moves.push({from: [r,c], to: [r+dir, c], p:p,enp:null, promote: true})
       }
-      //check up laft
-      posX = x - 1
-      if(document.getElementById(`${posY}${posX}`)){
-        if(
-          (document.getElementById(`${posY}${posX}`).classList.contains("black") && this.key == "white") || 
-          (document.getElementById(`${posY}${posX}`).classList.contains("white") && this.key == "black")
-          ){
-          legal.push(`${posY}${posX}`)
-        }else if(!(document.getElementById(`${posY}${posX}`).hasChildNodes())){
-          legal.push(`${posY}${posX}`)
-        }
+      //regular move
+      else if(!this.board[r+dir][c]){
+        moves.push({from: [r,c], to: [r+dir, c], p:p, enp:null})
       }
     }
     
-    //check down legal moves
-    posY = y - 2
-    if(document.getElementById(`${posY}${x}`)){
-      //check right 
-      posX = x + 1
-      if(document.getElementById(`${posY}${posX}`)){
-        if(
-          (document.getElementById(`${posY}${posX}`).classList.contains("black") && this.key == "white") || 
-          (document.getElementById(`${posY}${posX}`).classList.contains("white") && this.key == "black")
-          ){
-          legal.push(`${posY}${posX}`)
-        }else if(!(document.getElementById(`${posY}${posX}`).hasChildNodes())){
-          legal.push(`${posY}${posX}`)
-        }
-      }
-      //check  laft
-      posX = x - 1
-      if(document.getElementById(`${posY}${posX}`)){
-        if(
-          (document.getElementById(`${posY}${posX}`).classList.contains("black") && this.key == "white") || 
-          (document.getElementById(`${posY}${posX}`).classList.contains("white") && this.key == "black")
-          ){
-          legal.push(`${posY}${posX}`)
-        }else if(!(document.getElementById(`${posY}${posX}`).hasChildNodes())){
-          legal.push(`${posY}${posX}`)
-        }
+    
+    
+    //capture
+    if(this.board[r+dir][c+1] && (this.isWhite(p)!==this.isWhite(this.board[r+dir][c+1]))
+    ){
+      if(r===1||r===6){
+        moves.push({from: [r,c], to: [r+dir, c+1], p:p,enp:null, promote: true})
+      }else{
+        moves.push({from: [r,c], to: [r+dir, c+1], p:p,enp:null})
       }
     }
     
-    //check left legalMoves
-    posX = x - 2
-    posY = y
-    if(document.getElementById(`${posY}${posX}`)){
-      //check up 
-      posY = y + 1
-      if(document.getElementById(`${posY}${posX}`)){
-        if(
-          (document.getElementById(`${posY}${posX}`).classList.contains("black") && this.key == "white") || 
-          (document.getElementById(`${posY}${posX}`).classList.contains("white") && this.key == "black")
-          ){
-          legal.push(`${posY}${posX}`)
-        }else if(!(document.getElementById(`${posY}${posX}`).hasChildNodes())){
-          legal.push(`${posY}${posX}`)
-        }
-      }
-      //check down
-      posY = y - 1
-      if(document.getElementById(`${posY}${posX}`)){
-        if(
-          (document.getElementById(`${posY}${posX}`).classList.contains("black") && this.key == "white") || 
-          (document.getElementById(`${posY}${posX}`).classList.contains("white") && this.key == "black")
-          ){
-          legal.push(`${posY}${posX}`)
-        }else if(!(document.getElementById(`${posY}${posX}`).hasChildNodes())){
-          legal.push(`${posY}${posX}`)
-        }
+    if(this.board[r+dir][c-1] && (this.isWhite(p)!==this.isWhite(this.board[r+dir][c-1]))
+    ){
+      if(r===1||r===6){
+        moves.push({from: [r,c], to: [r+dir, c-1], p:p,enp:null, promote: true})
+      }else{
+        moves.push({from: [r,c], to: [r+dir, c-1], p:p, enp:null})
       }
     }
     
-    //check right legalMoves
-    posX = x + 2
-    posY = y
-    if(document.getElementById(`${posY}${posX}`)){
-      //check up 
-      posY = y + 1
-      if(document.getElementById(`${posY}${posX}`)){
-        if(
-          (document.getElementById(`${posY}${posX}`).classList.contains("black") && this.key == "white") || 
-          (document.getElementById(`${posY}${posX}`).classList.contains("white") && this.key == "black")
-          ){
-          legal.push(`${posY}${posX}`)
-        }else if(!(document.getElementById(`${posY}${posX}`).hasChildNodes())){
-          legal.push(`${posY}${posX}`)
-        }
-      }
-      //check down
-      posY = y - 1
-      if(document.getElementById(`${posY}${posX}`)){
-        if(
-          (document.getElementById(`${posY}${posX}`).classList.contains("black") && this.key == "white") || 
-          (document.getElementById(`${posY}${posX}`).classList.contains("white") && this.key == "black")
-          ){
-          legal.push(`${posY}${posX}`)
-        }else if(!(document.getElementById(`${posY}${posX}`).hasChildNodes())){
-          legal.push(`${posY}${posX}`)
-        }
-      }
-    }
-  
-    this.setLegal(legal)
-  }
-}
-
-class Bishop extends Piece{
-  events(){
-    this.div.addEventListener("click",()=>{
-      if(this.key==colorPlay)this.legalMovesBishop()
-    })
-  }
-  
-  legalMovesBishop(){
-    let legal = []
-    let y = Number(this.pos[0])
-    let x = Number(this.pos[1])
-    let c = y
-    let c2 = x
-    
-    //diagonal up right
-    while(c<8 && c2<8){
-      c++
-      c2++
-      if(document.getElementById(`${c}${c2}`).children.length == 0){
-        legal.push(`${c}${c2}`)
-      }
-      else if(document.getElementById(`${c}${c2}`).classList.contains("black")){
-        if(this.key == "white"){
-          legal.push(`${c}${c2}`)
-          break
-        }else{
-          break
-        }
-      }
-      else if(document.getElementById(`${c}${c2}`).classList.contains("white")){
-        if(this.key == "black"){
-          legal.push(`${c}${c2}`)
-          break
-        }else{
-          break
-        }
-      }
-    }
-    
-    //diagonal up left
-    c = y
-    c2 = x
-    while(c<8 && c2>1){
-      c++
-      c2--
-      if(document.getElementById(`${c}${c2}`).children.length == 0){
-        legal.push(`${c}${c2}`)
-      }
-      else if(document.getElementById(`${c}${c2}`).classList.contains("black")){
-        if(this.key == "white"){
-          legal.push(`${c}${c2}`)
-          break
-        }else{
-          break
-        }
-      }
-      else if(document.getElementById(`${c}${c2}`).classList.contains("white")){
-        if(this.key == "black"){
-          legal.push(`${c}${c2}`)
-          break
-        }else{
-          break
-        }
-      }
-    }
-    
-    //diagonal down left
-    c = y
-    c2 = x
-    while(c>1 && c2>1){
-      c--
-      c2--
-      if(document.getElementById(`${c}${c2}`).children.length == 0){
-        legal.push(`${c}${c2}`)
-      }
-      else if(document.getElementById(`${c}${c2}`).classList.contains("black")){
-        if(this.key == "white"){
-          legal.push(`${c}${c2}`)
-          break
-        }else{
-          break
-        }
-      }
-      else if(document.getElementById(`${c}${c2}`).classList.contains("white")){
-        if(this.key == "black"){
-          legal.push(`${c}${c2}`)
-          break
-        }else{
-          break
-        }
-      }
-    }
-    
-    //diagonal down right
-    c = y
-    c2 = x
-    while(c>1 && c2<8){
-      c--
-      c2++
-      if(document.getElementById(`${c}${c2}`).children.length == 0){
-        legal.push(`${c}${c2}`)
-      }
-      else if(document.getElementById(`${c}${c2}`).classList.contains("black")){
-        if(this.key == "white"){
-          legal.push(`${c}${c2}`)
-          break
-        }else{
-          break
-        }
-      }
-      else if(document.getElementById(`${c}${c2}`).classList.contains("white")){
-        if(this.key == "black"){
-          legal.push(`${c}${c2}`)
-          break
-        }else{
-          break
-        }
-      }
-    }
-    
-    if(this.id == "wq" || this.id == "bq"){
-      return legal
-    }else{
-      this.setLegal(legal)
-    }
-  }
-}
-
-class King extends Piece{
-  events(){
-    this.div.addEventListener("click",()=>{
-      if(this.key==colorPlay)this.legalMoves()
-    })
-  }
-  
-  legalMoves(){
-    let legal = []
-    let x = Number(this.pos[1])
-    let y = Number(this.pos[0])
-    for(let i = -1; i < 2; i++){
-      for(let j = -1; j < 2; j++){
+    //enpasand
+    if(this.enp!==''){
+      if(this.board[r][c+1]){
         
-        if(document.getElementById(`${y+i}${x+j}`)){
-          if(x==0&&y==0)continue
-          if(
-            (document.getElementById(`${y+i}${x+j}`).classList.contains("black") && this.key === "white") || 
-            (document.getElementById(`${y+i}${x+j}`).classList.contains("white") && this.key == "black")
-          ){
-            legal.push(`${y+i}${x+j}`)
-          }
-          else if(!(document.getElementById(`${y+i}${x+j}`).hasChildNodes())){
-            legal.push(`${y+i}${x+j}`)
-          }
-        }
-      }
-    }
-    
-    
-    //check if castle
-    if((this.key == "white" && (castleWht[0] || castleWht[1])) ||
-      (this.key == "black" && (castleBlk[0] || castleBlk[1])) 
-      ){
-      let c = x
-      if(castleBlk[0] || castleWht[0]){
-        while(c>2){
-          c--
-          if(document.getElementById(`${y}${c}`).hasChildNodes()){
-            break
-          }else if(c == 2){
-            legal.push(`${y}${x-2}`)
-          }
-        }
-      }
-      c = x
-      if(castleBlk[1] || castleWht[1]){
-        while(c<7){
-          c++
-          if(document.getElementById(`${y}${c}`).hasChildNodes()){
-            break
-          }else if(c == 7){
-            legal.push(`${y}${x+2}`)
-          }
+        if((this.isWhite(this.board[r][c+1])!==this.isWhite(p)) &&
+        this.board[r][c+1].toLowerCase() === 'p' &&
+        c+1 === fileAlp.indexOf(this.enp.toLowerCase())
+        ){
+          moves.push({from: [r,c], to: [r+dir, c+1], p:p, enp:null, enpCaptured:[r,c+1]})
         }
       }
       
+      else if(this.board[r][c-1]){
+        if(this.isWhite(this.board[r][c-1])!==this.isWhite(p) &&
+        this.board[r][c-1].toLowerCase() === 'p' &&
+        c-1 === fileAlp.indexOf(this.enp.toLowerCase())
+        ){
+          moves.push({from: [r,c], to: [r+dir, c+1], p:p, enp:null, enpCaptured:[r,c-1]})
+        }
+      }
     }
-    
-    
-    this.setLegal(legal)
-  }
-}
-
-class Queen extends Piece{
-  constructor({key, pos, id, svg}){
-    super({key, pos, id, svg})
   }
   
-  events(){
-    this.div.addEventListener("click",()=>{
-      if(this.key==colorPlay)this.queenLegalMoves()
+  genSlidingMoves(){}
+  
+  genKnightMoves(){}
+  
+  genKingMoves(){}
+}
+
+const Board = new Game(chessDetails)
+Board.setUp()
+
+function generateBoard(){
+  for(let i = 0; i < 8; i++){
+    for(let j = 0; j < 8; j++){
+      const div = document.createElement("div")
+      if((i%2===0 && j%2===0) || (i%2!==0 && j%2!==0)){
+        div.classList.add("light") 
+      }else{
+        div.classList.add("dark")
+      }
+      
+      div.id = `${i}${j}`
+      chessBoard.appendChild(div)
+    }
+  }
+  squares = chessBoard.querySelectorAll("div")
+}
+
+function render(board){
+  let pos = 0
+  
+  for(let i = 0; i < 8; i++){
+    for(let j = 0; j < 8; j++){
+      const div = squares[pos]
+      
+      if(!(board[i][j])){div.innerHTML='';pos++;continue}
+      
+      switch(board[i][j]){
+        case "r":
+          div.innerHTML = black[0].value
+          break
+        case "n":
+          div.innerHTML = black[1].value
+          break
+        case "b":
+          div.innerHTML = black[2].value
+          break
+        case "k":
+          div.innerHTML = black[3].value
+          break
+        case "q":
+          div.innerHTML = black[4].value
+          break
+        case "p":
+          div.innerHTML = black[5].value
+          break
+        case "R":
+          div.innerHTML = white[0].value
+          break
+        case "N":
+          div.innerHTML = white[1].value
+          break
+        case "B":
+          div.innerHTML = white[2].value
+          break
+        case "Q":
+          div.innerHTML = white[3].value
+          break
+        case "K":
+          div.innerHTML = white[4].value
+          break
+        case "P":
+          div.innerHTML = white[5].value
+          break
+      }
+      
+      pos++
+    }
+  }
+  
+  const pieces = chessBoard.querySelectorAll("div > svg")
+  
+  pieces.forEach(piece=>{
+    piece.onclick = ()=>makeMove(piece)
+    piece.style.rotate = `${Board.turn === 'w'?0:180}deg`
+  })
+  
+}
+
+function addEvents(){
+  squares.forEach(s=>{
+    s.onclick = ()=>move(s)
+  })
+}
+
+function makeMove(piece, moves){
+  moves = Board.generateMoves(piece.parentElement.id)
+  removeDivAllowed()
+
+  moves.forEach((m)=>{
+    const move = String(m.to.join(''))
+    
+    const square = document.getElementById(move)
+    square.classList.add("allowed")
+  })
+}
+
+function removeDivAllowed(){
+  if(chessBoard.querySelectorAll(".allowed").length!==0){
+    const allowed = chessBoard.querySelectorAll(".allowed")
+    allowed.forEach(p=>{
+      p.classList.remove("allowed")
     })
   }
-  
-  queenLegalMoves(){
-    const rookMoves = new Rook({key: this.key, id: this.id, pos: this.pos, svg: ""})
-    const bishopMoves = new Bishop({key: this.key, id: this.id, pos: this.pos, svg: ""})
-    let legal = []
-    legal = bishopMoves.legalMovesBishop()
-    rookMoves.legalMovesRook().forEach(l=>legal.push(l))
+}
+
+function move(square){
+  if(square.classList.contains("allowed")){
+    const move = [Number(square.id[0]),Number(square.id[1])]
+    const moves = Board.moves
     
-    this.setLegal(legal)
+    for(let i=0; i<moves.length;i++){
+      if(moves[i].to.join()==move.join()){
+        let nextPos = moves[i].p
+        Board.board[moves[i].from[0]][moves[i].from[1]] = null
+        
+        //check if pawn start move and set enp
+        if(moves[i].enp){
+          Board.enp = moves[i].enp
+        }else{
+          Board.enp = ''
+        }
+        
+        //if enpassant capture
+        if(moves[i].enpCaptured){
+          Board.board[moves[i].enpCaptured[0]][moves[i].enpCaptured[1]] = null
+        }
+        
+        //if promoting pawn
+        if(moves[i].promote){
+          promote(Board.turn, move)
+          return
+        }
+        
+        Board.board[move[0]][move[1]] = nextPos
+      }
+    }
+  
+    //console.log(board.board)
+    Board.turn = Board.turn === 'w'?'b':'w'
+    render(Board.board)
+    removeDivAllowed()
   }
 }
 
-
-
-function setUpPieces(){
-  colorPlay = "white"
+function promote(turn, to){
+  const officials = ['r', 'n', 'b', 'q']
+  chessBoard.style.pointerEvents = "none"
+  const proDiv = document.createElement("div")
+  proDiv.classList.add("promote")
+  proDiv.innerHTML = `${turn==='w'?`${white[0].value}${white[1].value}${white[2].value}${white[4].value}`:`${black[0].value}${black[1].value}${black[2].value}${black[4].value}`}`
+  proDiv.style.background = `${turn==='w'?"#b58863":"#e8cda1"}`
+  proDiv.style.top = `${turn==='w'?"4%":"84%"}`
+  proDiv.style.rotate = `${turn==='w'?"0":"180"}deg`
   
-  for(let i = 1; i < 9; i++){
-    whtPawn[i-1] = new Pawn({key: "white", pos: `2${i}`, id: `wp${i}`, svg: white[5].value})
-    whtPawn[i-1].addToBoard()
+  container.appendChild(proDiv)
+  const svgs = proDiv.querySelectorAll("svg")
+  
+  for(let i = 0;i < 4;i++){
+    let p
+    svgs[i].onclick = ()=>{
+      p = turn==='w'?officials[i].toUpperCase():officials[i]
+      proDiv.remove()
+      chessBoard.style.pointerEvents = "auto"
+      
+      Board.board[to[0]][to[1]] = p
+      Board.turn = turn === 'w'?'b':'w'
+      render(Board.board)
+      removeDivAllowed()
+      console.log(Board.board)
+    }
   }
-  
-  for(let i = 1; i < 3; i++){
-    whtRok[i-1] = new Rook({key: "white", pos: `1${i==1?i:8}`, id: `wr${i}`, svg: white[0].value})
-    whtRok[i-1].addToBoard()
-  }
-  
-  for(let i = 1; i < 3; i++){
-    whtKngt[i-1] = new Knight({key: "white", pos: `1${i==1?2:7}`, id: `wkt${i}`, svg: white[1].value})
-    whtKngt[i-1].addToBoard()
-  }
-  
-  for(let i = 1; i < 3; i++){
-    whtBish[i-1] = new Bishop({key: "white", pos: `1${i==1?3:6}`, id: `wb${i}`, svg: white[2].value})
-    whtBish[i-1].addToBoard()
-  }
-  
-  whtKing = new King({key: "white", pos: "15", id: "wkg", svg: white[4].value})
-  whtKing.addToBoard()
-  whtQuen[0] = new Queen({key: "white", pos: "14", id: "wq", svg: white[3].value})
-  whtQuen[0].addToBoard()
-  
-  
-  for(let i = 1; i < 3; i++){
-    blkRok[i-1] = new Rook({key: "black", pos: `8${i==1?i:8}`, id: `br${i}`, svg: black[0].value})
-    blkRok[i-1].addToBoard()
-  }
-  
-  for(let i = 1; i < 9; i++){
-    blkPawn[i-1] = new Pawn({key: "black", pos: `7${i}`, id: `bp${i}`, svg: black[5].value})
-    blkPawn[i-1].addToBoard()
-  }
-  
-  for(let i = 1; i < 3; i++){
-    blkKngt[i-1] = new Knight({key: "black", pos: `8${i==1?2:7}`, id: `bkt${i}`, svg: black[1].value})
-    blkKngt[i-1].addToBoard()
-  }
-  
-  for(let i = 1; i < 3; i++){
-    blkBish[i-1] = new Bishop({key: "black", pos: `8${i==1?3:6}`, id: `bb${i}`, svg: black[2].value})
-    blkBish[i-1].addToBoard()
-  }
-  
-  blkKing = new King({key: "black", pos: "85", id: "bkg", svg: black[4].value})
-  blkKing.addToBoard()
-  
-  blkQuen[0] = new Queen({key: "black", pos: "84", id: "bq", svg: black[3].value})
-  blkQuen[0].addToBoard()
-  
 }
 
-setUpPieces()
