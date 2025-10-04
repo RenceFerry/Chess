@@ -169,7 +169,7 @@ function generateBoard(){
   squares = chessBoard.querySelectorAll("div")
 }
 
-function render(board){fo
+function render(board){
   let pos = 0
   
   for(let i = 0; i < 8; i++){
