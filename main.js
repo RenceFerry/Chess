@@ -103,7 +103,7 @@ class Game{
     //capture
     if(this.board[r+dir][c+1] && (this.isWhite(p)!==this.isWhite(this.board[r+dir][c+1]))
     ){
-      if(r===1||r===6){
+      if((r===1&&this.isWhite(p))||(r===6&&!this.isWhite(p))){
         moves.push({from: [r,c], to: [r+dir, c+1], p:p,enp:null, promote: true})
       }else{
         moves.push({from: [r,c], to: [r+dir, c+1], p:p,enp:null})
@@ -112,7 +112,7 @@ class Game{
     
     if(this.board[r+dir][c-1] && (this.isWhite(p)!==this.isWhite(this.board[r+dir][c-1]))
     ){
-      if(r===1||r===6){
+      if((r===1&&this.isWhite(p))||(r===6&&!this.isWhite(p))){
         moves.push({from: [r,c], to: [r+dir, c-1], p:p,enp:null, promote: true})
       }else{
         moves.push({from: [r,c], to: [r+dir, c-1], p:p, enp:null})
@@ -136,7 +136,7 @@ class Game{
         this.board[r][c-1].toLowerCase() === 'p' &&
         c-1 === fileAlp.indexOf(this.enp.toLowerCase())
         ){
-          moves.push({from: [r,c], to: [r+dir, c+1], p:p, enp:null, enpCaptured:[r,c-1]})
+          moves.push({from: [r,c], to: [r+dir, c-1], p:p, enp:null, enpCaptured:[r,c-1]})
         }
       }
     }
@@ -169,7 +169,7 @@ function generateBoard(){
   squares = chessBoard.querySelectorAll("div")
 }
 
-function render(board){
+function render(board){fo
   let pos = 0
   
   for(let i = 0; i < 8; i++){
@@ -189,10 +189,10 @@ function render(board){
           div.innerHTML = black[2].value
           break
         case "k":
-          div.innerHTML = black[3].value
+          div.innerHTML = black[4].value
           break
         case "q":
-          div.innerHTML = black[4].value
+          div.innerHTML = black[3].value
           break
         case "p":
           div.innerHTML = black[5].value
@@ -301,7 +301,7 @@ function promote(turn, to){
   chessBoard.style.pointerEvents = "none"
   const proDiv = document.createElement("div")
   proDiv.classList.add("promote")
-  proDiv.innerHTML = `${turn==='w'?`${white[0].value}${white[1].value}${white[2].value}${white[4].value}`:`${black[0].value}${black[1].value}${black[2].value}${black[4].value}`}`
+  proDiv.innerHTML = `${turn==='w'?`${white[0].value}${white[1].value}${white[2].value}${white[3].value}`:`${black[0].value}${black[1].value}${black[2].value}${black[3].value}`}`
   proDiv.style.background = `${turn==='w'?"#b58863":"#e8cda1"}`
   proDiv.style.top = `${turn==='w'?"4%":"84%"}`
   proDiv.style.rotate = `${turn==='w'?"0":"180"}deg`
