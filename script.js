@@ -551,8 +551,6 @@ function move(square){
     if(Board.isCheck(Board.board, Board.turn))check(Board.turn, true, from,p)
     else check(Board.turn, false, from,p)
     
-    console.log(prevColor, Board.turn)
-    
     check(prevColor, false, from, p)
   }
 }
@@ -611,3 +609,5 @@ function check(color, ischeck, from, p){
     square.classList.remove("check")
   }
 }
+
+console.log(localStorage)
