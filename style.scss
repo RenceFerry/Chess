@@ -1,6 +1,8 @@
 :root{
   --light:#e8cda1;
+  --highlight:#c7ad83;
   --dark:#b58863;
+  --highdark:#916f53;
   --accent:#2b6cb0;
 }
 
@@ -15,6 +17,7 @@ body{
   margin: 0;
   padding: 0;
   section{
+    position: relative;
     .container{
     padding: 1rem;
     flex: 1;
@@ -68,7 +71,6 @@ body{
         bottom: 20%;
       }
       > div{
-        
         position: relative;
         display: flex;
         justify-content: center;
@@ -78,19 +80,88 @@ body{
         }
         &.light{
           background: var(--light);
+          &.highlight{
+            background: var(--highlight);
+          }
+          &.prev-move{
+            background: var(--highlight);
+          }
         }
         &.dark{
           background: var(--dark);
+          &.highlight{
+            background: var(--highdark);
+          }
+          &.prev-move{
+            background: var(--highdark);
+          }
         }
       }
     }
-  }
+    }
+    .undo-btn{
+      height: 10%;
+      display: flex;
+      flex-flow: row;
+      align-items: center;
+      justify-content: space-between;
+      .redo, .undo{
+        height: 100%;
+        width: 15%;
+        background: var(--light);
+        border-radius: 60% / 100%;
+        margin: 0 2rem 0 2rem;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 0 5px 1px black, 0 0 10px 3px var(--dark) inset;
+        img{
+          height: 80%;
+        }
+      }
+      .new-game{
+        height: 100%;
+        width: 30%;
+        background: var(--light);
+        border-radius: 30% / 100%;
+        margin: 0 2rem 0 2rem;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 0 5px 1px black, 0 0 10px 3px var(--dark) inset;
+        font-size: 100%;
+      }
+    }
+    .winner{
+      position: absolute;
+      width: 75%;
+      height: 25%;
+      border-radius: 2rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 0 5px 1px black, 0 0 10px 3px var(--dark) inset;
+      left: 12.5%;
+      top: 37.5%;
+      backdrop-filter: blur(3px);
+      font-size: 400%;
+      svg{
+        height: 70%;
+        margin-right: 1rem;
+      }
+      &.w{background: rgba(0, 0, 0, 0.2);color: white;}
+      &.b{background: rgba(255, 255, 255, 0.2);color: black;}
+    }
   }
 }
 
 .check{
   background: #dc5151 !important;
 }
+
+
+
+
 
 /* Portrait = height (vh) > width (vw) */
 @media (orientation: portrait) {

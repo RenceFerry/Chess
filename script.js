@@ -1,11 +1,20 @@
 import { white, black } from "./chessPieces.js"
 
-let chessDetails = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - n"
+const chess_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - n n"
+let chess_fen_undo = [chess_fen]
+let undoTracker = 0
 const chessBoard = document.querySelector(".chess-board")
+const undo = document.querySelector(".undo")
+const redo = document.querySelector(".redo")
+const newGameBtn = document.querySelector(".new-game")
+const section = document.querySelector("section")
+let winnerDiv
+let undoRedo = false
 let squares
 const fileAlp = ["a", "b", "c", 'd', 'e', 'f', 'g', 'h']
 const container = document.querySelector(".container")
 let temp = Array(8).fill(null).map(()=>Array(8).fill(null))
+let Board
 
 class Game{
   constructor(chessDetails){
@@ -15,15 +24,26 @@ class Game{
   inBounds(r,c){return r>=0&&r<=7&&c>=0&&c<=7}
   
   setUp(){
-    const parts = chessDetails.split(" ")
+    const parts = this.chessDetails.split(" ")
     this.board = Array(8).fill(null).map(()=>Array(8).fill(null))
     this.turn = parts[1]
     const row = parts[0].split('/')
     this.enp = parts[3]==='-'?'':parts[3]
     this.castle = parts[2]==='n'?null:parts[2].split('')
-    this.check = parts[4]==='n'?null:parts[4]
+    this.check = parts[4]==='n'?'n':parts[4]
     
     
+    let prevMove = parts[5]==='n'?'n':parts[5].split('/')
+    if(prevMove!=='n'){
+      prevMove = prevMove.map(move=>{
+        move = move.split('')
+        move = move.map(Number)
+        return move
+      })
+    }
+    //)
+    
+    this.prevMove = prevMove
     
     for(let r = 0; r < 8; r++){
       let file = 0
@@ -33,11 +53,8 @@ class Game{
       }
     }
     
-    
-    
     generateBoard()
     render(this.board)
-    addEvents(this)
   }
   
   generateMoves(id){
@@ -46,6 +63,7 @@ class Game{
     const c = id[1]
     
     let p = this.board[r][c]
+    if(!p)return
     if(((this.turn === 'w') !== this.isWhite(p)))return
     p = p.toLowerCase()
     if(p==='p')this.genPawnMoves(r,c,moves, this.board)
@@ -55,24 +73,6 @@ class Game{
     if(p==='q')this.genSlidingMoves(r,c,moves,[[1,1],[1,-1],[-1,1],[-1,-1],[0,1],[0,-1],[1,0],[-1,0]], this.board)
     if(p==='k')this.genKingMoves(r,c,moves, this.board)
     
-    
-//     for(let r = 0; r<8;r++){
-//       for(let c=0;c<8;c++){
-//         let p = this.board[r][c]
-//         if(!p)continue
-//         
-//         if((this.turn === 'w') !== this.isWhite(p))continue
-//         p = p.toLowerCase()
-//         if(p==='p')this.genPawnMoves(r,c,moves)
-//         if(p==='r')this.genSlidingMoves(r,c,moves,[[0,1],[0,-1],[1,0],[-1,0]])
-//         if(p==='n')this.genKnightMoves(r,c,moves)
-//         if(p==='b')this.genSlidingMoves(r,c,moves,[[1,1],[1,-1],[-1,1],[-1,-1]])
-//         if(p==='q')this.genSlidingMoves(r,c,moves,[[1,1],[1,-1],[-1,1],[-1,-1],[0,1],[0,-1],[1,0],[-1,0]])
-//         if(p==='k')this.genKingMoves(r,c,moves)
-//       }
-//     }
-    //console.log(this.board)
-
     if(moves.length===0){
       return moves
     }else{
@@ -91,9 +91,9 @@ class Game{
     for(let i=0;i<moves.length;i++){
       this.makeTempMove(moves[i])
       
-      //console.log(temp, moves[i], this.board)
+   
       let isCheck = this.isCheck(temp, this.turn)
-      //console.log(isCheck)
+
       if(!isCheck)allowedMoves.push(moves[i])
     }
     
@@ -103,9 +103,7 @@ class Game{
   makeTempMove(move) {
     const board = this.board;
     temp = structuredClone(board);
-  
-    //console.log(temp)
-  
+
     let from = move.from;
     let to = move.to;
     let p = move.p;
@@ -115,16 +113,28 @@ class Game{
   }
 
   isCheck(board, color){
-    let moves = []
+    let enemy = color==='w'?'b':'w'
+    let moves = this.genPseudoMoves(board, enemy)
     const kingPos = this.findKing(color, board)
     
+    for(let i=0;i<moves.length;i++){
+      if(moves[i].to.join()===kingPos.join()){
+        return true
+      }
+    }
+    
+    return false
+  }
+  
+  genPseudoMoves(board, color){
+    let moves = []
     for(let r = 0; r<8;r++){
       for(let c=0;c<8;c++){
         let p = board[r][c]
         if(!p)continue
         
-        if((color === 'w') === this.isWhite(p))continue
-        //console.log(p)
+        if((color === 'w') !== this.isWhite(p))continue
+  
         p = p.toLowerCase()
         if(p==='p')this.genPawnMoves(r,c,moves, board)
         if(p==='r')this.genSlidingMoves(r,c,moves,[[0,1],[0,-1],[1,0],[-1,0]], board)
@@ -135,18 +145,7 @@ class Game{
       }
     }
     
-    //console.log(moves)
-    
-    for(let i=0;i<moves.length;i++){
-      if(moves[i].to.join()===kingPos.join()){
-        return true
-      }
-    }
-    
-    //console.log(this.board, this.tempBoard)
-    
-    
-    return false
+    return moves
   }
   
   genPawnMoves(r,c,moves, board){
@@ -198,7 +197,7 @@ class Game{
     
     //enpasand
     if(this.enp!==''){
-      //console.log(this.enp)
+ 
       if(board[r][c+1]){
         
         if((this.isWhite(board[r][c+1])!==this.isWhite(p)) &&
@@ -295,7 +294,7 @@ class Game{
     }
     
     //check for castling
-    //console.log(this.castle)
+
     if(this.castle){
       this.castle.forEach(castle=>{
         if(this.isWhite(p)!==this.isWhite(castle))return
@@ -315,7 +314,7 @@ class Game{
           if(!board[r][cc])continue 
           
           if(board[r][cc]&&!(cc===0||cc===7))break
-          //console.log(r,cc)
+        
           if(board[r][cc].toLowerCase()==='r'&&cas==='q'){
             moves.push({to:[r,c-2],
             from:[r,c],
@@ -353,9 +352,6 @@ class Game{
     }
   }
 }
-
-const Board = new Game(chessDetails)
-Board.setUp()
 
 function generateBoard(){
   for(let i = 0; i < 8; i++){
@@ -432,13 +428,61 @@ function render(board){
     piece.onclick = ()=>makeMove(piece)
     piece.style.rotate = `${Board.turn === 'w'?0:180}deg`
   })
+
+  let checkSq
+  if(Board.check==='n'){
+    checkSq = chessBoard.querySelector(".check")
+    if(checkSq){
+      checkSq.classList.remove("check")
+    }
+  }else if(Board.check==='w'){
+    const sqPosW = Board.findKing('w', Board.board).join('')
+    checkSq = document.getElementById(sqPosW)
+    checkSq.classList.add("check")
+    
+    const sqPosB = Board.findKing('b', Board.board).join('')
+    checkSq = document.getElementById(sqPosB)
+    checkSq.classList.remove("check")
+  }else if(Board.check==='b'){
+    
+    const sqPosW = Board.findKing('w', Board.board).join('')
+    checkSq = document.getElementById(sqPosW)
+    checkSq.classList.remove("check")
+    
+    const sqPosB = Board.findKing('b', Board.board).join('')
+    checkSq = document.getElementById(sqPosB)
+    checkSq.classList.add("check")
+  }
   
+  const highlight = chessBoard.querySelectorAll(".highlight")
+  if(highlight){
+    highlight.forEach(h=>h.classList.remove("highlight"))
+  }
+  
+  if(Board.prevMove!=='n'){
+    highlightPrevMove(Board.prevMove[0], Board.prevMove[1])
+  }else{
+    const prevSquares = chessBoard.querySelectorAll(".prev-move")
+    if(prevSquares.length!=0){
+      
+      prevSquares.forEach(s=>s.classList.remove("prev-move"))
+    }
+  }
 }
 
 function addEvents(){
   squares.forEach(s=>{
-    s.onclick = ()=>move(s)
+    s.onclick = (e)=>{
+      if(!e.currentTarget.hasChildNodes()&&!e.currentTarget.classList.contains("allowed")){
+        removeDivAllowed()
+      }
+      move(s)
+    }
   })
+  redo.addEventListener("click",()=>UnReDo("redo"))
+  undo.addEventListener("click",()=>UnReDo("undo"))
+  newGameBtn.addEventListener("click",()=>newGame())
+  
 }
 
 function makeMove(piece){
@@ -466,12 +510,25 @@ function removeDivAllowed(){
 }
 
 function move(square){
+  const move = [Number(square.id[0]),Number(square.id[1])]
+  const moves = Board.moves
+  let p
+  let to
+  let from
+  
+  if(undoRedo&&undoTracker!==0){
+    chess_fen_undo.splice(-1*undoTracker)
+    undoTracker=0
+    undoRedo=false
+  }
+  
+  const highlight = chessBoard.querySelectorAll(".highlight")
+  if(highlight){
+    highlight.forEach(h=>h.classList.remove("highlight"))
+  }
+  if(square.hasChildNodes())square.classList.add("highlight")
+  
   if(square.classList.contains("allowed")){
-    const move = [Number(square.id[0]),Number(square.id[1])]
-    const moves = Board.moves
-    let p
-    let to
-    let from
     
     for(let i=0; i<moves.length;i++){
       if(moves[i].to.join()==move.join()){
@@ -510,18 +567,19 @@ function move(square){
           let newCastle = Board.castle.filter(c=>Board.isWhite(c)!== Board.isWhite(p))
           Board.castle = newCastle
           
-        }else if(p.toLowerCase()==='k'){
+        }else if(p.toLowerCase()==='k'&&Board.castle){
           let newCastle = Board.castle.filter(c=>Board.isWhite(c)!== Board.isWhite(p))
           Board.castle = newCastle
           
         }
         
+        
+    
         Board.board[to[0]][to[1]] = p
         Board.board[from[0]][from[1]] = null
         
         //check if rook and toggle castle
-        if(Board.castle.length===0)break
-        if(p.toLowerCase()==='r'){
+        if(p.toLowerCase()==='r' && Board.castle){
           if(from[1]===0){
             let newCastle = Board.castle.filter(c=>{
               return !(c.toLowerCase()==='q' &&  Board.isWhite(c) === Board.isWhite(p))
@@ -541,18 +599,23 @@ function move(square){
       }
     }
   
-    
-    //console.log(Board.board, temp)
     let prevColor = Board.turn
     Board.turn = Board.turn === 'w'?'b':'w'
-    render(Board.board)
-    removeDivAllowed()
+    Board.prevMove = [to, from]
     
     if(Board.isCheck(Board.board, Board.turn))check(Board.turn, true, from,p)
-    else check(Board.turn, false, from,p)
+    else {
+      check(prevColor, false, from,p)
+    }
+    if(p.toLowerCase()==='k')check(prevColor, false, from, p)
     
-    check(prevColor, false, from, p)
+    render(Board.board)
+    removeDivAllowed()
+  
+    setFen()
+    mate()
   }
+  
 }
 
 function promote(turn, to, from){
@@ -577,37 +640,163 @@ function promote(turn, to, from){
       
       let prevColor = Board.turn
       Board.turn = turn === 'w'?'b':'w'
+      Board.prevMove = [to, from]
       Board.board[to[0]][to[1]] = p
       Board.board[from[0]][from[1]] = null
+      setFen()
+      
+      if(Board.isCheck(Board.board, Board.turn))check(Board.turn, true, from,p)
+      else {
+        check(prevColor, false, from,p)
+      }
+      
       render(Board.board)
       removeDivAllowed()
-      
-      if(Board.isCheck(Board.board, Board.turn))check(Board.turn, true)
-      else check(Board.turn, false)
-      if(Board.isCheck(Board.board, prevColor))check(prevColor, true)
-      else check(prevColor, false)
     }
   }
 }
 
 function check(color, ischeck, from, p){
-  let squarePos
-  if(p.toLowerCase()==='k'){
-    squarePos = String(from.join(''))
-  }
-  else squarePos = String(Board.findKing(color, Board.board).join(''))
-  let square = document.getElementById(squarePos)
-  console.log(squarePos, color, ischeck)
-  
   if(ischeck){
-    Board.check = color==='w'?'K':'k'
+    Board.check = color==='w'?'w':'b'
+  }else if(color===Board.check){
+    Board.check = 'n'
+  }
+  
+}
+
+function highlightPrevMove(to, from){
+  const prevSquares = chessBoard.querySelectorAll(".prev-move")
+  if(prevSquares.length!=0){
+    prevSquares.forEach(s=>s.classList.remove("prev-move"))
+  }
+  
+  to = String(to.join(''))
+  from = String(from.join(''))
+  
+  const fromSquare = document.getElementById(from)
+  const toSquare = document.getElementById(to)
+  
+  fromSquare.classList.add("prev-move")
+  toSquare.classList.add("prev-move")
+}
+
+function setFen(){
+  let fen_array = []
+  let boardRow = []
+  let check = Board.check
+  let enp = Board.enp===''?'-':Board.enp
+  let castle = Board.castle.length===0?'n':Board.castle.join('')
+  let prevMove = Board.prevMove
+  
+  prevMove = prevMove.map(move=>String(move.join('')))
+  
+  for(let i=0;i<8;i++){
+    let row = []
+    let nullNum = 0
+    for(let j=0;j<8;j++){
+      if(Board.board[i][j]){
+        if(nullNum!==0){
+          row.push(nullNum)
+          nullNum=0
+        }
+        row.push(Board.board[i][j])
+      }else if(j===7&&nullNum!==0){
+        nullNum++
+        row.push(nullNum)
+      }else{
+        nullNum++
+      }
+    }
     
-    square.classList.add("check")
-  }else{
-    Board.check = null
     
-    square.classList.remove("check")
+    boardRow.push(row.join(''))
+    
+  }
+  const row = boardRow.join('/')
+  
+  fen_array.push(row, Board.turn, castle, enp, check, prevMove.join('/'))
+  
+  chess_fen_undo.push(fen_array.join(' '))
+}
+
+function mate(){
+  let moves = Board.genPseudoMoves(Board.board, Board.turn)
+  moves = Board.filterMoves(moves)
+  
+  console.log(moves, Board.turn)
+  if(moves.length===0){
+    //console.log("mate", Board.turn)
+    chessBoard.style.pointerEvents = "none"
+    winnerDiv = document.createElement("div")
+    
+    let winnerColor = Board.turn==='w'?'b':'w'
+    winnerDiv.classList.add("winner")
+    winnerDiv.classList.add(winnerColor)
+    
+    winnerDiv.innerHTML = `${winnerColor==='w'?white[4].value:black[4].value}  Wins!!`
+    
+    section.appendChild(winnerDiv)
+    
+    winnerDiv.onclick = ()=>winnerDiv.remove()
   }
 }
 
-console.log(localStorage)
+function UnReDo(unRedo){
+  switch(unRedo){
+    case "undo":
+      undoTracker++
+      if(undoTracker>chess_fen_undo.length-1){
+        undoTracker--
+        break
+      }
+      Board = new Game(chess_fen_undo[(chess_fen_undo.length-1) - undoTracker])
+      Board.setUp()
+      removeDivAllowed()
+      undoRedo = true
+      break
+    case "redo":
+      undoTracker--
+      if(undoTracker<0){
+        undoTracker++
+        break
+      }
+      Board = new Game(chess_fen_undo[(chess_fen_undo.length-1) - undoTracker])
+      Board.setUp()
+      removeDivAllowed()
+      undoRedo = true
+      break
+  }
+  
+}
+
+function newGame(){
+  Board = new Game(chess_fen)
+  Board.setUp()
+  chess_fen_undo = [chess_fen]
+  chessBoard.style.pointerEvents = "auto"
+  if(winnerDiv)winnerDiv.remove()
+}
+
+window.addEventListener("beforeunload", () => {
+  // Save instantly to localStorage
+  localStorage.setItem("fen", JSON.stringify(chess_fen_undo));
+});
+
+window.addEventListener("load", () => {
+  const saved = localStorage.getItem("fen");
+  if (saved) {
+    chess_fen_undo = JSON.parse(saved);
+    //console.log("Restored moves:", chess_fen_undo.at(-1));
+    Board = new Game(chess_fen_undo.at(-1))
+    Board.setUp()
+  }else{
+    Board = new Game(chess_fen)
+    Board.setUp()
+  }
+  addEvents()
+});
+
+
+//console.log(localStorage)
+

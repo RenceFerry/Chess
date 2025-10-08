@@ -1,6 +1,8 @@
 :root {
   --light:#e8cda1;
+  --highlight:#c7ad83;
   --dark:#b58863;
+  --highdark:#916f53;
   --accent:#2b6cb0;
 }
 
@@ -13,6 +15,10 @@ body {
   background: white;
   margin: 0;
   padding: 0;
+}
+
+body section {
+  position: relative;
 }
 
 body section .container {
@@ -90,8 +96,91 @@ body section .container .chess-board > div.light {
   background: var(--light);
 }
 
+body section .container .chess-board > div.light.highlight {
+  background: var(--highlight);
+}
+
+body section .container .chess-board > div.light.prev-move {
+  background: var(--highlight);
+}
+
 body section .container .chess-board > div.dark {
   background: var(--dark);
+}
+
+body section .container .chess-board > div.dark.highlight {
+  background: var(--highdark);
+}
+
+body section .container .chess-board > div.dark.prev-move {
+  background: var(--highdark);
+}
+
+body section .undo-btn {
+  height: 10%;
+  display: flex;
+  flex-flow: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+body section .undo-btn .redo, body section .undo-btn .undo {
+  height: 100%;
+  width: 15%;
+  background: var(--light);
+  border-radius: 60% / 100%;
+  margin: 0 2rem 0 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 5px 1px black, 0 0 10px 3px var(--dark) inset;
+}
+
+body section .undo-btn .redo img, body section .undo-btn .undo img {
+  height: 80%;
+}
+
+body section .undo-btn .new-game {
+  height: 100%;
+  width: 30%;
+  background: var(--light);
+  border-radius: 30% / 100%;
+  margin: 0 2rem 0 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 5px 1px black, 0 0 10px 3px var(--dark) inset;
+  font-size: 100%;
+}
+
+body section .winner {
+  position: absolute;
+  width: 75%;
+  height: 25%;
+  border-radius: 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 5px 1px black, 0 0 10px 3px var(--dark) inset;
+  left: 12.5%;
+  top: 37.5%;
+  backdrop-filter: blur(3px);
+  font-size: 400%;
+}
+
+body section .winner svg {
+  height: 70%;
+  margin-right: 1rem;
+}
+
+body section .winner.w {
+  background: rgba(0, 0, 0, 0.2);
+  color: white;
+}
+
+body section .winner.b {
+  background: rgba(255, 255, 255, 0.2);
+  color: black;
 }
 
 .check {
