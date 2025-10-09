@@ -174,12 +174,12 @@ body section .winner svg {
 }
 
 body section .winner.w {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.25);
   color: white;
 }
 
 body section .winner.b {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
   color: black;
 }
 

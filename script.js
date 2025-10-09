@@ -776,6 +776,7 @@ function newGame(){
   chess_fen_undo = [chess_fen]
   chessBoard.style.pointerEvents = "auto"
   if(winnerDiv)winnerDiv.remove()
+  removeDivAllowed()
 }
 
 window.addEventListener("beforeunload", () => {
@@ -795,6 +796,7 @@ window.addEventListener("load", () => {
     Board.setUp()
   }
   addEvents()
+  removeDivAllowed()
 });
 
 
