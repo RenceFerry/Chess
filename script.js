@@ -32,7 +32,6 @@ class Game{
     this.castle = parts[2]==='n'?null:parts[2].split('')
     this.check = parts[4]==='n'?'n':parts[4]
     
-    
     let prevMove = parts[5]==='n'?'n':parts[5].split('/')
     if(prevMove!=='n'){
       prevMove = prevMove.map(move=>{
@@ -468,6 +467,8 @@ function render(board){
       prevSquares.forEach(s=>s.classList.remove("prev-move"))
     }
   }
+  
+  mate()
 }
 
 function addEvents(){
@@ -613,7 +614,7 @@ function move(square){
     removeDivAllowed()
   
     setFen()
-    mate()
+    //mate()
   }
   
 }
